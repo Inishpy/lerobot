@@ -139,6 +139,7 @@ def train(cfg: TrainPipelineConfig):
     policy = make_policy(
         cfg=cfg.policy,
         ds_meta=dataset.meta,
+        device=device,
     )
 
     logging.info("Creating optimizer and scheduler")

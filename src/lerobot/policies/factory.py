@@ -105,6 +105,7 @@ def make_policy(
     cfg: PreTrainedConfig,
     ds_meta: LeRobotDatasetMetadata | None = None,
     env_cfg: EnvConfig | None = None,
+    device: str = None,
 ) -> PreTrainedPolicy:
     """Make an instance of a policy class.
 
@@ -161,16 +162,25 @@ def make_policy(
     cfg.input_features = {key: ft for key, ft in features.items() if key not in cfg.output_features}
     kwargs["config"] = cfg
 
+    # Determine device
+    policy_device = device if device is not None else getattr(cfg, "device", "cuda:0")
+
     if cfg.pretrained_path:
         # Load a pretrained policy and override the config if needed (for example, if there are inference-time
         # hyperparameters that we want to vary).
         kwargs["pretrained_name_or_path"] = cfg.pretrained_path
+        if cfg.type == "smolvla":
+            kwargs["device"] = policy_device
         policy = policy_cls.from_pretrained(**kwargs)
     else:
         # Make a fresh policy.
+        if cfg.type == "smolvla":
+            kwargs["device"] = policy_device
         policy = policy_cls(**kwargs)
 
-    policy.to(cfg.device)
+    # Only call .to() for policies that do not handle device in constructor
+    if cfg.type != "smolvla":
+        policy.to(policy_device)
     assert isinstance(policy, nn.Module)
 
     # policy = torch.compile(policy, mode="reduce-overhead")

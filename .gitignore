@@ -173,3 +173,20 @@ outputs/
 
 # Dev folders
 .cache/*
+
+# Ignore ML datasets, model weights, and large files
+datasets/
+checkpoints/
+models/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.npz
+*.h5
+*.onnx
+*.tar
+*.tar.gz
+*.zip
+*.pb

@@ -333,6 +333,7 @@ class SmolVLAPolicy(PreTrainedPolicy):
         self,
         config: SmolVLAConfig,
         dataset_stats: dict[str, dict[str, Tensor]] | None = None,
+        device: str = "cuda:0",
     ):
         """
         Args:
@@ -340,6 +341,7 @@ class SmolVLAPolicy(PreTrainedPolicy):
                     the configuration class is used.
             dataset_stats: Dataset statistics to be used for normalization. If not passed here, it is expected
                 that they will be passed with a call to `load_state_dict` before the policy is used.
+            device: The device to move the model to (e.g., "cuda:0").
         """
 
         super().__init__(config)
@@ -354,7 +356,7 @@ class SmolVLAPolicy(PreTrainedPolicy):
         )
 
         self.language_tokenizer = AutoProcessor.from_pretrained(self.config.vlm_model_name).tokenizer
-        self.model = VLAFlowMatching(config)
+        self.model = VLAFlowMatching(config, device=device)
         self.reset()
 
     def reset(self):
@@ -631,7 +633,7 @@ class VLAFlowMatching(nn.Module):
     └──────────────────────────────┘
     """
 
-    def __init__(self, config):
+    def __init__(self, config, device: str = "cuda:0"):
         super().__init__()
         self.config = config
 
@@ -645,12 +647,13 @@ class VLAFlowMatching(nn.Module):
             num_vlm_layers=self.config.num_vlm_layers,
             self_attn_every_n_layers=self.config.self_attn_every_n_layers,
             expert_width_multiplier=self.config.expert_width_multiplier,
+            device=device,
         )
         self.state_proj = nn.Linear(
             self.config.max_state_dim, self.vlm_with_expert.config.text_config.hidden_size
-        )
-        self.action_in_proj = nn.Linear(self.config.max_action_dim, self.vlm_with_expert.expert_hidden_size)
-        self.action_out_proj = nn.Linear(self.vlm_with_expert.expert_hidden_size, self.config.max_action_dim)
+        ).to(device)
+        self.action_in_proj = nn.Linear(self.config.max_action_dim, self.vlm_with_expert.expert_hidden_size).to(device)
+        self.action_out_proj = nn.Linear(self.vlm_with_expert.expert_hidden_size, self.config.max_action_dim).to(device)
 
         self.action_time_mlp_in = nn.Linear(
             self.vlm_with_expert.expert_hidden_size * 2, self.vlm_with_expert.expert_hidden_size

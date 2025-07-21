@@ -70,20 +70,22 @@ class SmolVLMWithExpertModel(nn.Module):
         num_vlm_layers: int = -1,
         self_attn_every_n_layers: int = -1,
         expert_width_multiplier: float = 0.5,
+        device: str = "cuda:0",
     ):
         super().__init__()
+        self.device = device
         if load_vlm_weights:
             print(f"Loading  {model_id} weights ...")
             self.vlm = AutoModelForImageTextToText.from_pretrained(
                 model_id,
-                device_map="auto",
+                device_map=None,
                 torch_dtype="bfloat16",
                 low_cpu_mem_usage=True,
-            )
+            ).to(self.device)
             config = self.vlm.config
         else:
             config = AutoConfig.from_pretrained(model_id)
-            self.vlm = SmolVLMForConditionalGeneration(config=config)
+            self.vlm = SmolVLMForConditionalGeneration(config=config).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_id)
         if num_vlm_layers > 0:
             print(f"Reducing the number of VLM layers to {num_vlm_layers} ...")
